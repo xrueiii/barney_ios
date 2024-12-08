@@ -93,7 +93,7 @@ struct LogInView: View {
                         .disabled(!isFormValid()) // 表單無效時禁用按鈕
                         
                         // 隱藏的 NavigationLink，用於跳轉到 ContentView
-                        NavigationLink(destination: ContentView(), isActive: $shouldNavigate) {
+                        NavigationLink(destination: HomeView(), isActive: $shouldNavigate) {
                             EmptyView()
                         }
                     }
