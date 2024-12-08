@@ -1,5 +1,7 @@
 import SwiftUI
 
+let PORT = 8888
+
 struct LogInView: View {
     @State private var email: String = ""
     @State private var password: String = ""
@@ -110,7 +112,7 @@ struct LogInView: View {
 
     func handleLogin() {
         // 構建 API 請求
-        guard let url = URL(string: "https://your-api-endpoint.com/login") else {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/login") else {
             errorMessage = "無效的 API 端點。"
             return
         }
