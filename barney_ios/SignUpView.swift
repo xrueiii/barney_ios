@@ -192,19 +192,19 @@ struct SignUpView: View {
             }
             
             // 構建 API 請求
-            guard let url = URL(string: "https://your-api-endpoint.com/signup") else {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/signup") else {
                 errorMessage = "Invalid API endpoint."
                 return
             }
             
             let userData: [String: Any] = [
                 "email": email,
-                "phoneNumber": phoneNumber,
+                "phone": phoneNumber,
                 "password": password,
-                "firstName": firstName,
-                "lastName": lastName,
+                "fname": firstName,
+                "lname": lastName,
                 "gender": selectedGender,
-                "birthday": birthday.timeIntervalSince1970
+                "birthday": birthday.formatted()
             ]
             
             var request = URLRequest(url: url)
