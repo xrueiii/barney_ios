@@ -1,6 +1,8 @@
 import SwiftUI
 
-let PORT = 8888
+let PORT = 3456
+
+let defaults = UserDefaults.standard
 
 struct LogInView: View {
     @State private var email: String = ""
@@ -150,8 +152,15 @@ struct LogInView: View {
                 if let data = data {
                     do {
                         if let responseJSON = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                           let success = responseJSON["success"] as? Bool, success {
+                            let success = responseJSON["success"] as? Bool, success {
                             // 登入成功
+                            let fname = responseJSON["fname"]
+                            let lname = responseJSON["lname"]
+                            let gender = responseJSON["gender"]
+                            let phone = responseJSON["phone"]
+                            
+                            let usrArr = [fname, lname, gender, phone, email]
+                            defaults.set(usrArr, forKey: "userArray")
                             shouldNavigate = true
                             errorMessage = nil
                         } else {
