@@ -1,24 +1,24 @@
-//
-//  ContentView.swift
-//  barney_ios
-//
-//  Created by 吳承翰 on 2024/12/7.
-//
-
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationStack {
+            VStack(spacing: 20) {
+                Image(systemName: "globe")
+                    .imageScale(.large)
+                    .foregroundStyle(.tint)
+                Text("Hello, world!")
+                    .font(.title)
+            }
+            .padding()
         }
-        .padding()
+        .navigationBarBackButtonHidden(true) // 隱藏返回按鈕
     }
 }
 
-#Preview {
-    ContentView()
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
