@@ -12,19 +12,19 @@ struct HomeView: View {
                     ProgressView("Loading branches...")
                         .frame(maxHeight: .infinity)
                 } else {
-                    ScrollView {
-                        // Banner Image
-                        Image("banner")
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 250)
-                            .clipped()
+                    // Banner Image
+                    Image("banner")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 250)
+                        .clipped()
 
+                    ScrollView {
                         // Branches List
                         VStack(spacing: 20) {
                             ForEach(branches) { branch in
                                 BranchCard(
-                                    branchImage:   branch.imageName,
+                                    branchImage: branch.imageName,
                                     branchName: branch.name,
                                     branchPhone: branch.phone,
                                     branchAddress: branch.address,
@@ -71,6 +71,7 @@ struct HomeView: View {
                 .background(Color(.secondarySystemBackground))
             }
             .edgesIgnoringSafeArea(.bottom)
+            .edgesIgnoringSafeArea(.top)
             .navigationBarTitleDisplayMode(.inline) // Inline style for title
             .onAppear {
                 fetchBranches()
