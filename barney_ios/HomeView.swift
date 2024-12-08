@@ -24,7 +24,7 @@ struct HomeView: View {
                         VStack(spacing: 20) {
                             ForEach(branches) { branch in
                                 BranchCard(
-                                    branchImage: branch.imageName,
+                                    branchImage:   branch.imageName,
                                     branchName: branch.name,
                                     branchPhone: branch.phone,
                                     branchAddress: branch.address,
@@ -42,27 +42,30 @@ struct HomeView: View {
                     Image("logob") // Replace with your custom image
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 60, height: 60)
+                        .frame(width: 49, height: 49)
                     Spacer()
                     NavigationLink(destination: ReserveView()) {
                         Image("calender") // Replace with your custom image
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 60, height: 60)
+                            .frame(width: 49, height: 49)
                     }
                     Spacer()
                     NavigationLink(destination: OrderView()) {
                         Image("cup") // Replace with your custom image
                             .resizable()
                             .scaledToFit()
-                            .frame(width: 60, height: 60)
+                            .frame(width: 50, height: 50)
                     }
                     Spacer()
-                    Image("member") // Replace with your custom image
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 60, height: 60)
+                    NavigationLink(destination: ProfileView()) {
+                        Image("member") // Replace with your custom image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 49, height: 49)
+                    }
                     Spacer()
+                    
                 }
                 .padding()
                 .background(Color(.secondarySystemBackground))
@@ -76,7 +79,7 @@ struct HomeView: View {
     }
     
     private func fetchBranches() {
-        guard let url = URL(string: "https://your-api-endpoint.com/branches") else {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/getAllBranches") else {
             print("Invalid API endpoint")
             return
         }
@@ -123,11 +126,14 @@ struct BranchCard: View {
                         .font(.title)
                         .fontWeight(.bold)
                     Text("Phone: \(branchPhone)")
+                        .multilineTextAlignment(.center)
                         .font(.subheadline)
                     Text("Address: \(branchAddress)")
                         .font(.subheadline)
+                        .multilineTextAlignment(.center)
                     Text("Seats: \(branchSeats)")
                         .font(.subheadline)
+                        .multilineTextAlignment(.center)
                 }
                 .padding()
                 .frame(width: 320, height: 200)
@@ -157,7 +163,7 @@ struct BranchCard: View {
 }
 
 struct Branch: Identifiable, Codable {
-    let id: Int
+    let id: String
     let name: String
     let phone: String
     let address: String

@@ -82,7 +82,12 @@ struct ProfileView: View {
                 }
                 .padding()
                 .onAppear {
-                    fetchUserData() // 呼叫 API 獲取用戶資訊
+//                    fetchUserData() // 呼叫 API 獲取用戶資訊
+                    let savedData = UserDefaults().array(forKey: "userArray") as? [String]
+                    userName = savedData![0] + " " + savedData![1]
+                    userGender = savedData![2]
+                    userPhoneNumber = savedData![3]
+                    userEmail = savedData![4]
                 }
 
                 // Bottom Tab Bar

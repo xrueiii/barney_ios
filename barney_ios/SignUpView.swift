@@ -169,7 +169,7 @@ struct SignUpView: View {
                 }
             }
             .navigationDestination(isPresented: $isSignUpComplete) {
-                ContentView() // 跳轉到 ContentView
+                HomeView() // 跳轉到 ContentView
             }
         }
         .navigationBarBackButtonHidden(true)

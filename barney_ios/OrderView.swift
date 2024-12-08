@@ -108,7 +108,7 @@ struct OrderView: View {
 
     // Fetch drinks from the real API
     func fetchDrinks() {
-        guard let url = URL(string: "https://yourapi.com/drinks") else { return }
+        guard let url = URL(string: "http://localhost:\(PORT)/api/getAllRecipes") else { return }
 
         isLoading = true // Show loading animation
         URLSession.shared.dataTask(with: url) { data, response, error in
@@ -145,11 +145,11 @@ struct OrderView: View {
 }
 
 struct Drink: Identifiable, Codable {
-    var id = UUID()
+    var id: String
     let drinkName: String
     let flavor: String
     let mood: String
-    let intensity: String
+    let intensity: Int
 }
 
 struct DrinkCard: View {
@@ -157,39 +157,59 @@ struct DrinkCard: View {
     var drinkName: String
     var flavor: String
     var mood: String
-    var intensity: String
+    var intensity: Int
+    @State private var isFlipped: Bool = false // State to track flipping
 
     var body: some View {
-        VStack {
-            Image(drinkImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 140, height: 140)
-                .clipped()
+        ZStack {
+            // Front Side
+            if !isFlipped {
+                Image(drinkImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 140, height: 140)
+                    .clipped()
+                    .cornerRadius(10)
+                    .onTapGesture {
+                        withAnimation(.easeInOut) {
+                            isFlipped.toggle()
+                        }
+                    }
+            } else {
+                // Back Side
+                VStack(spacing: 10) {
+                    Text("\(drinkName)")
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Flavor: \(flavor)")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+
+                    Text("Mood: \(mood)")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Concentration: \(intensity)")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                  
+                }
+                .padding()
+                .frame(width: 170, height: 200)
+                .background(Color(.systemGray5))
                 .cornerRadius(10)
-
-            VStack(spacing: 10) {
-                Text(drinkName)
-                    .font(.title3)
-                    .fontWeight(.bold)
-
-                Text("Flavor: \(flavor)")
-                    .font(.subheadline)
-                    .multilineTextAlignment(.leading)
-
-                Text("Mood: \(mood)")
-                    .font(.subheadline)
-                    .multilineTextAlignment(.leading)
-
-                Text("Intensity: \(intensity)")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                .onTapGesture {
+                    withAnimation(.easeInOut) {
+                        isFlipped.toggle()
+                    }
+                }
             }
-            .padding()
         }
-        .frame(width: 180, height: 220)
-        .background(Color(.systemGray5))
-        .cornerRadius(10)
+//        .rotation3DEffect(
+//            Angle(degrees: isFlipped ? 180 : 0),
+//            axis: (x: 0, y: 1, z: 0)
+//        )
     }
 }
 
