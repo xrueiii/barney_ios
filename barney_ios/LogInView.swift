@@ -1,6 +1,6 @@
 import SwiftUI
 
-let PORT = 3456
+let PORT = 3000
 
 let defaults = UserDefaults.standard
 
