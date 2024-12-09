@@ -13,11 +13,12 @@ struct HomeView: View {
                         .frame(maxHeight: .infinity)
                 } else {
                     // Banner Image
-                    Image("banner")
+                    Image("logo")
                         .resizable()
                         .scaledToFill()
-                        .frame(height: 250)
+                        .frame(height: 100)
                         .clipped()
+                        .padding()
 
                     ScrollView {
                         // Branches List
@@ -71,7 +72,7 @@ struct HomeView: View {
                 .background(Color(.secondarySystemBackground))
             }
             .edgesIgnoringSafeArea(.bottom)
-            .edgesIgnoringSafeArea(.top)
+            // .edgesIgnoringSafeArea(.top)
             .navigationBarTitleDisplayMode(.inline) // Inline style for title
             .onAppear {
                 fetchBranches()

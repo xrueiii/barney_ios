@@ -176,6 +176,8 @@ struct CustomizeSheetView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
+                Text("Order").font(.title3).fontWeight(.bold)
+                
                 Picker("Choose", selection: $selectedOption) {
                     Text("Existing Drinks").tag("Existing Drinks")
                     Text("Custom Drink").tag("Custom Drink")
@@ -267,7 +269,7 @@ struct CustomizeSheetView: View {
             fetchTypes() // Fetch types on appear
         }
         .presentationDetents([.fraction(0.7)])
-        .padding().padding(.top, 20)
+        .padding()
     }
 
     // Determines if the user can proceed to the next step
@@ -327,11 +329,14 @@ struct OrderDetailsSheet: View {
     @State private var address: String = "" // 使用者地址
     @State private var selectedBranch: String = "" // 已選擇的分店
     @State private var branches: [Branch] = [] // 從 API 獲取的分店列表
+    @State private var pickupTime: Date = Date() // 領取時間
     @State private var showAlert: Bool = false // 顯示成功訊息
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 30) {
+                Text("Order Detail").font(.title3).fontWeight(.bold)
+                
                 Picker("Order Type", selection: $selectedOption) {
                     Text("Dine In").tag("Dine In")
                     Text("Takeaway").tag("Takeaway")
@@ -373,15 +378,34 @@ struct OrderDetailsSheet: View {
                     .padding()
                 }
 
+                // 領取時間選擇
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Select Pickup Time:")
+                    HStack {
+                        DatePicker("Pickup Time", selection: $pickupTime, displayedComponents: [.date, .hourAndMinute])
+                            .labelsHidden()
+                            .frame(maxWidth: .infinity) // 將 DatePicker 寬度設為最大
+                    }
+                    .padding()
+                    .background(Color(.systemGray6)) // 添加背景區域
+                    .cornerRadius(8) // 圓角
+                }
+                .padding()
+
                 Button("Submit") {
                     guard let order = order else { return }
+
+                    let dateFormatter = DateFormatter()
+                    dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                    let formattedTime = dateFormatter.string(from: pickupTime)
 
                     let finalOrder = FinalOrder(
                         type: order.type,
                         items: order.items,
                         deliveryType: selectedOption,
                         address: selectedOption == "Delivery" ? address : nil,
-                        branch: selectedOption != "Delivery" ? selectedBranch : nil
+                        branch: selectedOption != "Delivery" ? selectedBranch : nil,
+                        pickupTime: formattedTime
                     )
                     
                     submitOrder(finalOrder) {
@@ -403,12 +427,14 @@ struct OrderDetailsSheet: View {
                     )
                 }
             }
-            .padding(40)
-            .presentationDetents([.fraction(0.4)])
+            .padding()
         }
         .onAppear {
             fetchBranches()
         }
+        .presentationDetents([.fraction(0.65)])
+        .padding()
+        
     }
 
     // Fetch branches from the API
@@ -473,8 +499,8 @@ struct FinalOrder: Codable {
     let deliveryType: String
     let address: String?
     let branch: String?
+    let pickupTime: String // 新增領取時間字段
 }
-
 
 struct CustomSelection {
     var type: String = ""
