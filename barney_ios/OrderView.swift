@@ -345,10 +345,32 @@ struct OrderDetailsSheet: View {
                 .pickerStyle(SegmentedPickerStyle())
 
                 if selectedOption == "Delivery" {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 20) {
                         Text("Enter your address:")
                         TextField("Address", text: $address)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
+                        
+                        Text("Select a branch:")
+                        Menu {
+                            ForEach(branches) { branch in
+                                Button(action: {
+                                    selectedBranch = branch.name
+                                }) {
+                                    Text(branch.name)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Text(selectedBranch.isEmpty ? "Choose a branch" : selectedBranch)
+                                    .foregroundColor(selectedBranch.isEmpty ? .gray : .primary)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
                     }
                     .padding()
                 } else {
@@ -404,7 +426,7 @@ struct OrderDetailsSheet: View {
                         items: order.items,
                         deliveryType: selectedOption,
                         address: selectedOption == "Delivery" ? address : nil,
-                        branch: selectedOption != "Delivery" ? selectedBranch : nil,
+                        branch: selectedBranch,
                         pickupTime: formattedTime
                     )
                     
@@ -432,7 +454,7 @@ struct OrderDetailsSheet: View {
         .onAppear {
             fetchBranches()
         }
-        .presentationDetents([.fraction(0.65)])
+        .presentationDetents([.fraction(0.8)])
         .padding()
         
     }
