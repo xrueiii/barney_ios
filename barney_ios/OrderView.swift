@@ -4,6 +4,8 @@ struct OrderView: View {
     @State private var drinks: [Drink] = [] // Drinks fetched from the API
     @State private var isLoading: Bool = true // Loading state
     @State private var showCustomizeSheet: Bool = false // Control Customize Sheet visibility
+    @State private var showOrderDetailsSheet: Bool = false // Control Order Details Sheet visibility
+    @State private var order: Order? = nil // Store the submitted order
 
     var body: some View {
         NavigationStack {
@@ -106,9 +108,19 @@ struct OrderView: View {
                 fetchDrinks()
             }
             .sheet(isPresented: $showCustomizeSheet) {
-                CustomizeSheetView(drinks: drinks, onSubmit: { order in
-                    submitOrder(order: order)
-                }).padding().padding(.top, 20)
+                CustomizeSheetView(drinks: drinks, onNext: { submittedOrder in
+                    self.order = submittedOrder
+                    showCustomizeSheet = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        showOrderDetailsSheet = true
+                    }
+                })
+            }
+            .sheet(isPresented: $showOrderDetailsSheet) {
+                OrderDetailsSheet(order: order, onSubmit: {
+                    showOrderDetailsSheet = false
+                    print("Order confirmed successfully!")
+                })
             }
         }
     }
@@ -148,29 +160,6 @@ struct OrderView: View {
             }
         }.resume()
     }
-
-    // Submit order to the API
-    func submitOrder(order: Order) {
-        guard let url = URL(string: "http://localhost:\(PORT)/api/submitOrder") else { return }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        do {
-            let data = try JSONEncoder().encode(order)
-            request.httpBody = data
-
-            URLSession.shared.dataTask(with: request) { _, response, error in
-                if let error = error {
-                    print("Error submitting order: \(error)")
-                    return
-                }
-                print("Order submitted successfully!")
-            }.resume()
-        } catch {
-            print("Error encoding order: \(error)")
-        }
-    }
 }
 
 struct CustomizeSheetView: View {
@@ -180,12 +169,9 @@ struct CustomizeSheetView: View {
     @State private var types: [String] = [] // Types fetched from API
     @State private var items: [String: [String]] = [:] // Items fetched based on type
     @State private var units: [String: String] = [:] // Units fetched for each type
-    @State private var customSelections: [CustomSelection] = [] // User's custom drink selections
-    @State private var showAlert: Bool = false // 控制成功訊息的顯示
+    @State private var customSelections: [CustomSelection] = [CustomSelection()] // User's custom drink selections
 
-    @Environment(\.dismiss) private var dismiss // 用於關閉 sheet
-
-    let onSubmit: (Order) -> Void
+    let onNext: (Order) -> Void // Callback to handle next action
 
     var body: some View {
         NavigationStack {
@@ -197,6 +183,7 @@ struct CustomizeSheetView: View {
                 .pickerStyle(SegmentedPickerStyle())
 
                 if selectedOption == "Existing Drinks" {
+                    // Existing Drinks List
                     List(drinks) { drink in
                         HStack {
                             Text(drink.drinkName)
@@ -211,6 +198,7 @@ struct CustomizeSheetView: View {
                         }
                     }
                 } else {
+                    // Custom Drink Creation
                     ScrollView {
                         ForEach(customSelections.indices, id: \.self) { index in
                             VStack(alignment: .leading, spacing: 20) {
@@ -258,40 +246,31 @@ struct CustomizeSheetView: View {
                     }
                 }
 
-                Button("Submit") {
+                Button("Next") {
                     if selectedOption == "Existing Drinks", let drink = selectedDrink {
                         let order = Order(type: "Existing", items: [OrderItem(name: drink.drinkName)])
-                        onSubmit(order)
-                        showAlert = true // 顯示成功訊息
+                        onNext(order) // Pass the order back
                     } else {
                         let items = customSelections.map {
                             OrderItem(name: $0.item, amount: $0.amount, unit: $0.unit)
                         }
                         let order = Order(type: "Custom", items: items)
-                        onSubmit(order)
-                        showAlert = true // 顯示成功訊息
+                        onNext(order) // Pass the order back
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSubmit)
-                .alert(isPresented: $showAlert) {
-                        Alert(
-                            title: Text("Success"),
-                            message: Text("Your order has been submitted successfully!"),
-                            dismissButton: .default(Text("OK"), action: {
-                                dismiss() // 成功訊息後關閉 sheet
-                                })
-                            )
-                    }
             }
             .padding()
         }
-        .presentationDetents([.fraction(0.8)])
         .onAppear {
-            fetchTypes()
+            fetchTypes() // Fetch types on appear
         }
+        .presentationDetents([.fraction(0.7)])
+        .padding().padding(.top, 20)
     }
 
+    // Determines if the user can proceed to the next step
     var canSubmit: Bool {
         if selectedOption == "Existing Drinks" {
             return selectedDrink != nil
@@ -300,9 +279,10 @@ struct CustomizeSheetView: View {
         }
     }
 
+    // Fetches available types from the API
     func fetchTypes() {
         guard let url = URL(string: "http://localhost:\(PORT)/api/getTypes") else { return }
-        URLSession.shared.dataTask(with: url) { data, _, error in
+        URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error fetching types: \(error)")
                 return
@@ -319,9 +299,10 @@ struct CustomizeSheetView: View {
         }.resume()
     }
 
+    // Fetches items and units for a selected type from the API
     func fetchItems(for type: String, completion: @escaping ([String], String) -> Void) {
         guard let url = URL(string: "http://localhost:\(PORT)/api/getItems?type=\(type)") else { return }
-        URLSession.shared.dataTask(with: url) { data, _, error in
+        URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error fetching items: \(error)")
                 return
@@ -338,6 +319,162 @@ struct CustomizeSheetView: View {
         }.resume()
     }
 }
+
+struct OrderDetailsSheet: View {
+    let order: Order? // 暫存的訂單資訊
+    let onSubmit: () -> Void // 完成提交的回調
+    @State private var selectedOption: String = "Dine In" // 默認選項
+    @State private var address: String = "" // 使用者地址
+    @State private var selectedBranch: String = "" // 已選擇的分店
+    @State private var branches: [Branch] = [] // 從 API 獲取的分店列表
+    @State private var showAlert: Bool = false // 顯示成功訊息
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Picker("Order Type", selection: $selectedOption) {
+                    Text("Dine In").tag("Dine In")
+                    Text("Takeaway").tag("Takeaway")
+                    Text("Delivery").tag("Delivery")
+                }
+                .pickerStyle(SegmentedPickerStyle())
+
+                if selectedOption == "Delivery" {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Enter your address:")
+                        TextField("Address", text: $address)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                    }
+                    .padding()
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Select a branch:")
+                        Menu {
+                            ForEach(branches) { branch in
+                                Button(action: {
+                                    selectedBranch = branch.name
+                                }) {
+                                    Text(branch.name)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                Text(selectedBranch.isEmpty ? "Choose a branch" : selectedBranch)
+                                    .foregroundColor(selectedBranch.isEmpty ? .gray : .primary)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                        }
+                    }
+                    .padding()
+                }
+
+                Button("Submit") {
+                    guard let order = order else { return }
+
+                    let finalOrder = FinalOrder(
+                        type: order.type,
+                        items: order.items,
+                        deliveryType: selectedOption,
+                        address: selectedOption == "Delivery" ? address : nil,
+                        branch: selectedOption != "Delivery" ? selectedBranch : nil
+                    )
+                    
+                    submitOrder(finalOrder) {
+                        showAlert = true // 顯示成功訊息
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(
+                    (selectedOption == "Delivery" && address.isEmpty) ||
+                    (selectedOption != "Delivery" && selectedBranch.isEmpty)
+                )
+                .alert(isPresented: $showAlert) {
+                    Alert(
+                        title: Text("Success"),
+                        message: Text("Your order has been submitted successfully!"),
+                        dismissButton: .default(Text("OK"), action: {
+                            onSubmit() // 清除暫存的資料並關閉 Sheet
+                        })
+                    )
+                }
+            }
+            .padding(40)
+            .presentationDetents([.fraction(0.4)])
+        }
+        .onAppear {
+            fetchBranches()
+        }
+    }
+
+    // Fetch branches from the API
+    private func fetchBranches() {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/getAllBranches") else {
+            print("Invalid API endpoint")
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let error = error {
+                print("Error fetching branches: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = data else {
+                print("No data received")
+                return
+            }
+            
+            do {
+                let decodedBranches = try JSONDecoder().decode([Branch].self, from: data)
+                DispatchQueue.main.async {
+                    self.branches = decodedBranches
+                }
+            } catch {
+                print("Error decoding branches: \(error.localizedDescription)")
+            }
+        }.resume()
+    }
+
+    // Submit the final order to the API
+    private func submitOrder(_ finalOrder: FinalOrder, completion: @escaping () -> Void) {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/submitFinalOrder") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        do {
+            let data = try JSONEncoder().encode(finalOrder)
+            request.httpBody = data
+
+            URLSession.shared.dataTask(with: request) { _, response, error in
+                if let error = error {
+                    print("Error submitting order: \(error)")
+                    return
+                }
+                DispatchQueue.main.async {
+                    completion() // 回調通知成功
+                }
+            }.resume()
+        } catch {
+            print("Error encoding final order: \(error)")
+        }
+    }
+}
+
+// Final order structure for submission
+struct FinalOrder: Codable {
+    let type: String
+    let items: [OrderItem]
+    let deliveryType: String
+    let address: String?
+    let branch: String?
+}
+
 
 struct CustomSelection {
     var type: String = ""
@@ -369,8 +506,6 @@ struct ItemResponse: Codable {
     let items: [String]
     let unit: String
 }
-
-
 
 struct DrinkCard: View {
     var drinkImage: String
