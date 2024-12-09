@@ -171,11 +171,11 @@ struct Branch: Identifiable, Codable {
     let imageName: String // Image name in the Assets catalog
 }
 
-struct ReserveView: View {
+/*struct ReserveView: View {
     var body: some View {
         Text("ReserveView")
     }
-}
+}*/
 
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
