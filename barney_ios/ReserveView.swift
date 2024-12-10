@@ -4,8 +4,8 @@ struct ReserveView: View {
     @State private var selectedDate = Date()
     @State private var numberOfPeople = 1
     @State private var selectedTime = "20:00" // Default selected time
-    @State private var branches: [Branch] = [] // List of branches available for reservation
-    @State private var selectedBranch: Branch? = nil
+    @State private var branches: [AvailableBranch] = [] // List of branches available for reservation
+    @State private var selectedBranch: AvailableBranch? = nil
     @State private var showBranchList = false
     @State private var isLoading = false // To show loading animation
 
@@ -80,7 +80,7 @@ struct ReserveView: View {
                                                 branchName: branch.name,
                                                 branchPhone: branch.phone,
                                                 branchAddress: branch.address,
-                                                branchSeats: branch.seats,
+                                                branchSeats: branch.seats, availableSeats: branch.availableSeats,
                                                 onReserve: {
                                                     selectedBranch = branch
                                                     makeReservation()
@@ -181,7 +181,7 @@ struct ReserveView: View {
             }
 
             do {
-                let decodedBranches = try JSONDecoder().decode([Branch].self, from: data)
+                let decodedBranches = try JSONDecoder().decode([AvailableBranch].self, from: data)
                 DispatchQueue.main.async {
                     branches = decodedBranches
                     isLoading = false
@@ -200,7 +200,7 @@ struct ReserveView: View {
         guard let branch = selectedBranch else { return }
         
         // API endpoint
-        guard let url = URL(string: "http://localhost:\(PORT)/api/makeReservation") else {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/postReservation") else {
             print("Invalid API endpoint")
             return
         }
@@ -209,12 +209,13 @@ struct ReserveView: View {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
         let formattedDate = dateFormatter.string(from: selectedDate)
-        
+        let savedData = UserDefaults().array(forKey: "userArray") as? [String]
         // Prepare the reservation data
         let reservation = ReservationRequest(
             branchId: branch.id,
             date: formattedDate,
             time: selectedTime,
+            memberId: savedData![5],
             people: numberOfPeople
         )
         
@@ -257,6 +258,7 @@ struct ReserveBranchCard: View {
     var branchPhone: String
     var branchAddress: String
     var branchSeats: Int
+    var availableSeats: Int
     var onReserve: () -> Void
 
     @State private var isFlipped: Bool = false // Controls the flip state
@@ -290,6 +292,9 @@ struct ReserveBranchCard: View {
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
                     Text("Seats: \(branchSeats)")
+                        .font(.subheadline)
+                        .multilineTextAlignment(.center)
+                    Text("Available Seats: \(availableSeats)")
                         .font(.subheadline)
                         .multilineTextAlignment(.center)
 
@@ -343,6 +348,7 @@ struct ReservationRequest: Codable {
     let branchId: String
     let date: String
     let time: String
+    let memberId: String
     let people: Int
 }
 

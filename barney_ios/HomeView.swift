@@ -164,6 +164,16 @@ struct BranchCard: View {
     }
 }
 
+struct AvailableBranch: Identifiable, Codable {
+    let id: String
+    let name: String
+    let phone: String
+    let address: String
+    let seats: Int
+    let availableSeats: Int
+    let imageName: String // Image name in the Assets catalog
+}
+
 struct Branch: Identifiable, Codable {
     let id: String
     let name: String

@@ -5,7 +5,7 @@ struct OrderView: View {
     @State private var isLoading: Bool = true // Loading state
     @State private var showCustomizeSheet: Bool = false // Control Customize Sheet visibility
     @State private var showOrderDetailsSheet: Bool = false // Control Order Details Sheet visibility
-    @State var order: Order = Order(type: "", items: [])  // Store the submitted order
+    @State var order: Order = Order(type: true, items: [])  // Store the submitted order
     
     var body: some View {
         NavigationStack {
@@ -164,10 +164,10 @@ struct OrderView: View {
 
 struct CustomizeSheetView: View {
     let drinks: [Drink] // 接收來自 API 的飲品數據
-    @State private var selectedOption: String = "Existing Drinks" // Default selection
+    @State private var selectedOption: Bool = true // Default selection true for existing drinks
     @State private var selectedDrink: Drink? = nil
-    @State private var types: [String] = [] // Types fetched from API
-    @State private var items: [String: [String]] = [:] // Items fetched based on type
+    @State private var types: [ItemType] = [] // Types fetched from API
+    @State private var items: [ItemList] = [ItemList(list:[])] // Items fetched based on type
     @State private var units: [String: String] = [:] // Units fetched for each type
     @State private var customSelections: [CustomSelection] = [CustomSelection()] // User's custom drink selections
     @Binding var order: Order
@@ -181,12 +181,12 @@ struct CustomizeSheetView: View {
                 Text("Order").font(.title3).fontWeight(.bold)
                 
                 Picker("Choose", selection: $selectedOption) {
-                    Text("Existing Drinks").tag("Existing Drinks")
-                    Text("Custom Drink").tag("Custom Drink")
+                    Text("Existing Drinks").tag(true)
+                    Text("Custom Drink").tag(false)
                 }
                 .pickerStyle(SegmentedPickerStyle())
 
-                if selectedOption == "Existing Drinks" {
+                if selectedOption == true {
                     // Existing Drinks List
                     List(drinks) { drink in
                         HStack {
@@ -208,24 +208,20 @@ struct CustomizeSheetView: View {
                             VStack(alignment: .leading, spacing: 20) {
                                 Picker("Type", selection: $customSelections[index].type) {
                                     Text("None").tag("")
-                                    ForEach(types, id: \.self) { type in
-                                        Text(type).tag(type)
+                                    ForEach(types) { type in
+                                        Text(type.name).tag(type.id)
                                     }
                                 }
                                 .pickerStyle(MenuPickerStyle())
-                                .onChange(of: customSelections[index].type) { newType in
-                                    fetchItems(for: newType) { fetchedItems, fetchedUnit in
-                                        items[newType] = fetchedItems
-                                        units[newType] = fetchedUnit
-                                        customSelections[index].item = ""
-                                        customSelections[index].unit = fetchedUnit
-                                    }
+                                .onChange(of: customSelections[index].type) {
+                                    fetchItems(typeId: customSelections[index].type, index: index)
+                                    
                                 }
 
                                 Picker("Item", selection: $customSelections[index].item) {
                                     Text("None").tag("")
-                                    ForEach(items[customSelections[index].type] ?? [], id: \.self) { item in
-                                        Text(item).tag(item)
+                                    ForEach(items[index].list, id: \.self) { item in
+                                        Text(item.name).tag(item.id)
                                     }
                                 }
                                 .pickerStyle(MenuPickerStyle())
@@ -244,6 +240,7 @@ struct CustomizeSheetView: View {
 
                         Button(action: {
                             customSelections.append(CustomSelection())
+                            items.append(ItemList(list: []))
                         }) {
                             Label("Add Item", systemImage: "plus.circle")
                         }
@@ -251,15 +248,15 @@ struct CustomizeSheetView: View {
                 }
 
                 Button("Next") {
-                    if selectedOption == "Existing Drinks", let drink = selectedDrink {
-                        order = Order(type: "Existing", items: [OrderItem(id: drink.id, amount: 1, unit:"")])
+                    if selectedOption == true, let drink = selectedDrink {
+                        order = Order(type: true, items: [OrderItem(id: drink.id, amount: 1, unit:"")])
                         print(order)
                         onNext(order) // Pass the order back
                     } else {
                         let items = customSelections.map {
                             OrderItem(id: $0.item, amount: $0.amount, unit: $0.unit)
                         }
-                        order = Order(type: "Custom", items: items)
+                        order = Order(type: false, items: items)
                         onNext(order) // Pass the order back
                     }
                 }
@@ -277,7 +274,7 @@ struct CustomizeSheetView: View {
 
     // Determines if the user can proceed to the next step
     var canSubmit: Bool {
-        if selectedOption == "Existing Drinks" {
+        if selectedOption == true {
             return selectedDrink != nil
         } else {
             return !customSelections.contains { $0.type.isEmpty || $0.item.isEmpty || $0.amount <= 0 }
@@ -286,7 +283,7 @@ struct CustomizeSheetView: View {
 
     // Fetches available types from the API
     func fetchTypes() {
-        guard let url = URL(string: "http://localhost:\(PORT)/api/getTypes") else { return }
+        guard let url = URL(string: "http://localhost:\(PORT)/api/getAllTypes") else { return }
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error fetching types: \(error)")
@@ -294,7 +291,7 @@ struct CustomizeSheetView: View {
             }
             guard let data = data else { return }
             do {
-                let fetchedTypes = try JSONDecoder().decode([String].self, from: data)
+                let fetchedTypes = try JSONDecoder().decode([ItemType].self, from: data)
                 DispatchQueue.main.async {
                     types = fetchedTypes
                 }
@@ -305,8 +302,8 @@ struct CustomizeSheetView: View {
     }
 
     // Fetches items and units for a selected type from the API
-    func fetchItems(for type: String, completion: @escaping ([String], String) -> Void) {
-        guard let url = URL(string: "http://localhost:\(PORT)/api/getItems?type=\(type)") else { return }
+    func fetchItems(typeId: String, index: Int) {
+        guard let url = URL(string: "http://localhost:\(PORT)/api/getItems?typeId=\(typeId)") else { return }
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("Error fetching items: \(error)")
@@ -314,9 +311,9 @@ struct CustomizeSheetView: View {
             }
             guard let data = data else { return }
             do {
-                let response = try JSONDecoder().decode(ItemResponse.self, from: data)
+                let fetchedItems = try JSONDecoder().decode([Item].self, from: data)
                 DispatchQueue.main.async {
-                    completion(response.items, response.unit)
+                    items[index].list = fetchedItems
                 }
             } catch {
                 print("Error decoding items: \(error)")
@@ -440,7 +437,7 @@ struct OrderDetailsSheet: View {
                     submitOrder(finalOrder) {
                         showAlert = true // 顯示成功訊息
                     }
-                    order = Order(type: "", items: [])
+                    order = Order(type: true, items: [])
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
@@ -524,7 +521,7 @@ struct OrderDetailsSheet: View {
 
 // Final order structure for submission
 struct FinalOrder: Codable {
-    let type: String
+    let type: Bool
     let items: [OrderItem]
     let deliveryType: String
     let address: String?
@@ -549,7 +546,7 @@ struct Drink: Identifiable, Codable {
 }
 
 struct Order: Codable {
-    let type: String
+    let type: Bool
     let items: [OrderItem]
 }
 
@@ -559,9 +556,18 @@ struct OrderItem: Codable {
     var unit: String?
 }
 
-struct ItemResponse: Codable {
-    let items: [String]
-    let unit: String
+struct ItemType: Identifiable, Codable {
+    let id: String
+    let name: String
+}
+
+struct Item: Identifiable, Hashable, Codable {
+    let id: String
+    let name: String
+}
+
+struct ItemList: Codable {
+    var list: [Item]
 }
 
 struct DrinkCard: View {
