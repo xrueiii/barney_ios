@@ -13,6 +13,9 @@ struct ProfileView: View {
     @State private var userPhoneNumber: String = "Loading..."
     @State private var userGender: String = "Loading..."
     @State private var errorMessage: String? = nil // 用於處理錯誤訊息
+    @Environment(\.presentationMode) var presentationMode // 用於返回登入頁面
+    @State private var showLogoutAlert = false // 控制是否顯示確認彈窗
+    @State private var navigateToLogin = false // 控制跳轉到登入頁面
 
     var body: some View {
         NavigationStack {
@@ -77,6 +80,34 @@ struct ProfileView: View {
                     .background(Color(.systemGray5))
                     .cornerRadius(10)
                     .padding(.top, 50) // 設定距離上方的間距
+                    
+                    // Logout Button
+                    Button(action: {
+                        showLogoutAlert = true // 顯示確認彈窗
+                    }){
+                        Text("Log Out")
+                            .font(.headline)
+                            .frame(width: 100)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                            .padding(.horizontal)
+                    }.padding()
+                        .alert(isPresented: $showLogoutAlert) {
+                                        Alert(
+                                            title: Text("Log Out"),
+                                            message: Text("Are you sure you want to log out?"),
+                                            primaryButton: .destructive(Text("Log Out")) {
+                                                performLogout() // 執行登出邏輯
+                                            },
+                                            secondaryButton: .cancel()
+                                        )
+                                    }
+
+                        NavigationLink(destination: LogInView(), isActive: $navigateToLogin) {
+                                        EmptyView() // 使用 NavigationLink 跳轉到登入頁
+                                    }
 
                     Spacer() // 將內容推到上方
                 }
@@ -130,6 +161,13 @@ struct ProfileView: View {
             .navigationBarBackButtonHidden(true)
         }
     }
+    private func performLogout() {
+            // 清除本地資料
+            UserDefaults().removeObject(forKey: "userArray")
+
+            // 跳轉到登入頁面
+            navigateToLogin = true
+        }
 
     // Load user data from API
     private func fetchUserData() {

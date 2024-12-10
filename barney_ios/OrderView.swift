@@ -328,6 +328,7 @@ struct OrderDetailsSheet: View {
     @State private var selectedOption: String = "Dine-In" // 默認選項
     @State private var address: String = "" // 使用者地址
     @State private var selectedBranch: String = "" // 已選擇的分店
+    @State private var selectedBranchName: String? = nil // 用來儲存選中的分店名稱
     @State private var branches: [Branch] = [] // 從 API 獲取的分店列表
     @State private var pickupTime: Date = Date() // 領取時間
     @State private var showAlert: Bool = false // 顯示成功訊息
@@ -352,11 +353,13 @@ struct OrderDetailsSheet: View {
                         TextField("Address", text: $address)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                         
-                        Text("Select a branch:")
+                        Text("Select a branch: \(selectedBranchName ?? "None")")
+                          
                         Menu {
                             ForEach(branches) { branch in
                                 Button(action: {
                                     selectedBranch = branch.id
+                                    selectedBranchName = branch.name
                                 }) {
                                     Text(branch.name)
                                 }
@@ -377,11 +380,13 @@ struct OrderDetailsSheet: View {
                     .padding()
                 } else {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Select a branch:")
+                        Text("Select a branch:  \(selectedBranchName ?? "None")")
+                        
                         Menu {
                             ForEach(branches) { branch in
                                 Button(action: {
                                     selectedBranch = branch.id
+                                    selectedBranchName = branch.name
                                 }) {
                                     Text(branch.name)
                                 }

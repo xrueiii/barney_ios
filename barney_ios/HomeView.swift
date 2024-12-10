@@ -125,7 +125,7 @@ struct BranchCard: View {
                 // Back side with details
                 VStack(spacing: 10) {
                     Text(branchName)
-                        .font(.title)
+                        .font(.title3)
                         .fontWeight(.bold)
                     Text("Phone: \(branchPhone)")
                         .multilineTextAlignment(.center)
