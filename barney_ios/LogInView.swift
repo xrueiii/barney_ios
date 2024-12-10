@@ -1,6 +1,6 @@
 import SwiftUI
 
-let PORT = 3456
+let PORT = 3457
 
 let defaults = UserDefaults.standard
 
@@ -158,8 +158,9 @@ struct LogInView: View {
                             let lname = responseJSON["lname"]
                             let gender = responseJSON["gender"]
                             let phone = responseJSON["phone"]
+                            let id = responseJSON["id"]
                             
-                            let usrArr = [fname, lname, gender, phone, email]
+                            let usrArr = [fname, lname, gender, phone, email, id]
                             defaults.set(usrArr, forKey: "userArray")
                             shouldNavigate = true
                             errorMessage = nil

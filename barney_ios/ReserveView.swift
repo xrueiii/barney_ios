@@ -3,14 +3,14 @@ import SwiftUI
 struct ReserveView: View {
     @State private var selectedDate = Date()
     @State private var numberOfPeople = 1
-    @State private var selectedTime = "8:00 PM" // Default selected time
+    @State private var selectedTime = "20:00" // Default selected time
     @State private var branches: [Branch] = [] // List of branches available for reservation
     @State private var selectedBranch: Branch? = nil
     @State private var showBranchList = false
     @State private var isLoading = false // To show loading animation
 
     let availableTimes = [
-        "8:00 PM", "8:15 PM", "8:30 PM", "8:45 PM", "9:00 PM", "9:15 PM", "9:30 PM", "9:45 PM","10:00 PM", "10:15 PM", "10:30 PM", "10:45 PM", "11:00 PM", "11:15 PM", "11:30 PM", "11:45 PM","12:00 AM", "12:15 AM", "12:30 AM", "12:45 AM", "1:00 AM", "1:15 AM", "1:30 AM", "1:45 AM","2:00 AM", "2:15 AM", "2:30 AM", "2:45 AM", "3:00 AM", "3:15 AM", "3:30 AM","3:45 AM","4:00 AM"
+        "20:00", "20:15", "20:30", "20:45", "21:00", "21:15", "21:30", "21:45","22:00", "22:15", "22:30", "22:45", "23:00", "23:15", "23:30", "23:45","00:00", "00:15", "00:30", "00:45", "01:00", "01:15", "01:30", "01:45","02:00", "02:15", "02:30", "02:45", "03:00", "03:15 ", "03:30","03:45","04:00"
     ]
 
     var body: some View {
@@ -145,24 +145,22 @@ struct ReserveView: View {
         dateFormatter.dateFormat = "yyyy-MM-dd"
 
         let formattedDate = dateFormatter.string(from: selectedDate)
-        let parameters: [String: Any] = [
+        let parameters: [String: String] = [
             "date": formattedDate,
             "time": selectedTime,
-            "people": numberOfPeople
+            "people": "\(numberOfPeople)"
         ]
 
-        guard let url = URL(string: "http://localhost:\(PORT)/api/getAvailableBranches") else { return }
+        var urlComponents = URLComponents(string: "http://localhost:\(PORT)/api/getAvailableBranches")
+        urlComponents?.queryItems = parameters.map { URLQueryItem(name: $0.key, value: $0.value) }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: [])
-        } catch {
-            print("Error encoding parameters: \(error)")
+        guard let url = urlComponents?.url else {
+            print("Invalid URL")
             return
         }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
 
         isLoading = true
         URLSession.shared.dataTask(with: request) { data, response, error in
@@ -217,7 +215,7 @@ struct ReserveView: View {
             branchId: branch.id,
             date: formattedDate,
             time: selectedTime,
-            numberOfPeople: numberOfPeople
+            people: numberOfPeople
         )
         
         do {
@@ -345,7 +343,7 @@ struct ReservationRequest: Codable {
     let branchId: String
     let date: String
     let time: String
-    let numberOfPeople: Int
+    let people: Int
 }
 
 

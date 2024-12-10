@@ -5,8 +5,8 @@ struct OrderView: View {
     @State private var isLoading: Bool = true // Loading state
     @State private var showCustomizeSheet: Bool = false // Control Customize Sheet visibility
     @State private var showOrderDetailsSheet: Bool = false // Control Order Details Sheet visibility
-    @State private var order: Order? = nil // Store the submitted order
-
+    @State var order: Order = Order(type: "", items: [])  // Store the submitted order
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -108,7 +108,7 @@ struct OrderView: View {
                 fetchDrinks()
             }
             .sheet(isPresented: $showCustomizeSheet) {
-                CustomizeSheetView(drinks: drinks, onNext: { submittedOrder in
+                CustomizeSheetView(drinks: drinks, order: $order, onNext: { submittedOrder in
                     self.order = submittedOrder
                     showCustomizeSheet = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -117,7 +117,7 @@ struct OrderView: View {
                 })
             }
             .sheet(isPresented: $showOrderDetailsSheet) {
-                OrderDetailsSheet(order: order, onSubmit: {
+                OrderDetailsSheet(order: $order, onSubmit: {
                     showOrderDetailsSheet = false
                     print("Order confirmed successfully!")
                 })
@@ -170,8 +170,10 @@ struct CustomizeSheetView: View {
     @State private var items: [String: [String]] = [:] // Items fetched based on type
     @State private var units: [String: String] = [:] // Units fetched for each type
     @State private var customSelections: [CustomSelection] = [CustomSelection()] // User's custom drink selections
-
+    @Binding var order: Order
     let onNext: (Order) -> Void // Callback to handle next action
+    
+    
 
     var body: some View {
         NavigationStack {
@@ -250,13 +252,14 @@ struct CustomizeSheetView: View {
 
                 Button("Next") {
                     if selectedOption == "Existing Drinks", let drink = selectedDrink {
-                        let order = Order(type: "Existing", items: [OrderItem(name: drink.drinkName)])
+                        order = Order(type: "Existing", items: [OrderItem(id: drink.id, amount: 1, unit:"")])
+                        print(order)
                         onNext(order) // Pass the order back
                     } else {
                         let items = customSelections.map {
-                            OrderItem(name: $0.item, amount: $0.amount, unit: $0.unit)
+                            OrderItem(id: $0.item, amount: $0.amount, unit: $0.unit)
                         }
-                        let order = Order(type: "Custom", items: items)
+                        order = Order(type: "Custom", items: items)
                         onNext(order) // Pass the order back
                     }
                 }
@@ -323,14 +326,16 @@ struct CustomizeSheetView: View {
 }
 
 struct OrderDetailsSheet: View {
-    let order: Order? // 暫存的訂單資訊
+    @Binding var order: Order // 暫存的訂單資訊
     let onSubmit: () -> Void // 完成提交的回調
-    @State private var selectedOption: String = "Dine In" // 默認選項
+    @State private var selectedOption: String = "Dine-In" // 默認選項
     @State private var address: String = "" // 使用者地址
     @State private var selectedBranch: String = "" // 已選擇的分店
     @State private var branches: [Branch] = [] // 從 API 獲取的分店列表
     @State private var pickupTime: Date = Date() // 領取時間
     @State private var showAlert: Bool = false // 顯示成功訊息
+    
+    let savedData = UserDefaults().array(forKey: "userArray") as? [String]
 
     var body: some View {
         NavigationStack {
@@ -338,7 +343,7 @@ struct OrderDetailsSheet: View {
                 Text("Order Detail").font(.title3).fontWeight(.bold)
                 
                 Picker("Order Type", selection: $selectedOption) {
-                    Text("Dine In").tag("Dine In")
+                    Text("Dine In").tag("Dine-In")
                     Text("Takeaway").tag("Takeaway")
                     Text("Delivery").tag("Delivery")
                 }
@@ -354,7 +359,7 @@ struct OrderDetailsSheet: View {
                         Menu {
                             ForEach(branches) { branch in
                                 Button(action: {
-                                    selectedBranch = branch.name
+                                    selectedBranch = branch.id
                                 }) {
                                     Text(branch.name)
                                 }
@@ -379,7 +384,7 @@ struct OrderDetailsSheet: View {
                         Menu {
                             ForEach(branches) { branch in
                                 Button(action: {
-                                    selectedBranch = branch.name
+                                    selectedBranch = branch.id
                                 }) {
                                     Text(branch.name)
                                 }
@@ -415,7 +420,7 @@ struct OrderDetailsSheet: View {
                 .padding()
 
                 Button("Submit") {
-                    guard let order = order else { return }
+                    guard !order.items.isEmpty else { return }
 
                     let dateFormatter = DateFormatter()
                     dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
@@ -425,14 +430,17 @@ struct OrderDetailsSheet: View {
                         type: order.type,
                         items: order.items,
                         deliveryType: selectedOption,
-                        address: selectedOption == "Delivery" ? address : nil,
-                        branch: selectedBranch,
+                        address: (selectedOption == "Delivery") ? address : nil,
+                        branchId: selectedBranch,
+                        memberId: savedData![5],
                         pickupTime: formattedTime
                     )
                     
+                    showAlert = true
                     submitOrder(finalOrder) {
                         showAlert = true // 顯示成功訊息
                     }
+                    order = Order(type: "", items: [])
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(
@@ -490,7 +498,7 @@ struct OrderDetailsSheet: View {
 
     // Submit the final order to the API
     private func submitOrder(_ finalOrder: FinalOrder, completion: @escaping () -> Void) {
-        guard let url = URL(string: "http://localhost:\(PORT)/api/submitFinalOrder") else { return }
+        guard let url = URL(string: "http://localhost:\(PORT)/api/postOrder") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -520,7 +528,8 @@ struct FinalOrder: Codable {
     let items: [OrderItem]
     let deliveryType: String
     let address: String?
-    let branch: String?
+    let branchId: String?
+    let memberId: String?
     let pickupTime: String // 新增領取時間字段
 }
 
@@ -545,7 +554,7 @@ struct Order: Codable {
 }
 
 struct OrderItem: Codable {
-    let name: String
+    let id: String
     var amount: Double?
     var unit: String?
 }
