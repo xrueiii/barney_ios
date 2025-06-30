@@ -1,3 +1,5 @@
+> Demo Video 🍹:  [Barney](https://youtu.be/aRyZP6Fh0kM)
+
 # Barney iOS - 執行說明
 
 這份說明檔將說明如何執行「Barney」平台的 iOS 前端應用程式。
